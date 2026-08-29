@@ -1,4 +1,3 @@
-#define _POSIX_C_SOURCE 200809L
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -83,9 +82,10 @@ void get_redirects(Expr *cmd)
 
     while (i < tokens_num && tokens[i]->type == REDIRECT)
     {
-
+        enum redirect_type op = tokens[i++]->data.token;
         char *file = tokens[i++]->data.value;
-        cmd_data->redirects[cmd_data->redirectc].op = tokens[i]->data.token;
+
+        cmd_data->redirects[cmd_data->redirectc].op = op;
         cmd_data->redirects[cmd_data->redirectc++].file = file;
     }
 }
@@ -110,7 +110,7 @@ Expr *get_pipeline()
 
     expr = cmd();
 
-    while (tokens[i]->type == PIPE)
+    while (i < tokens_num && tokens[i]->type == PIPE)
     {
         i++;
         Expr *pipeline = malloc(sizeof(struct Expr));
@@ -168,7 +168,10 @@ void print_ast(Expr *ast, int level)
             case REDIRECT_ERR:
                 op = "2>";
                 break;
+            default:
+                op = "?";
             }
+
             printf("op: %s\n", op);
             printf("file: %s\n", cmd_data->redirects[i].file);
         }

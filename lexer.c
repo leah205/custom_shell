@@ -18,7 +18,6 @@ int tokenize(char *arr[], int n, struct token **tokens)
     {
 
         tokens[i] = malloc(sizeof(struct token));
-        printf("%d %s\n", strcmp(arr[i], "|"), arr[i]);
         if (!strcmp(arr[i], "|"))
         {
             if (i == 0 || tokens[i - 1]->type != WORD)
@@ -71,7 +70,9 @@ int tokenize(char *arr[], int n, struct token **tokens)
         else
         {
             tokens[i]->type = WORD;
-            tokens[i]->data.value = arr[i];
+            char *str_ptr = malloc(strlen(arr[i]) + 1);
+            strcpy(str_ptr, arr[i]);
+            tokens[i]->data.value = str_ptr;
         }
     }
 
@@ -83,13 +84,13 @@ int tokenize(char *arr[], int n, struct token **tokens)
     return 0;
 }
 
-int main(void)
-{
-    char *arr[] = {"echo", "\"Hello World\"", "|", "./output.txt", "2>", "cat", ">>", "yo"};
-    struct token **tokens = malloc(8 * sizeof(struct token));
-    tokenize(arr, 8, tokens);
-    // for (int i = 0; i < 8; i++)
-    // {
-    //     printf("%d %s %p", tokens[i]->type, tokens[i]->data.value, &tokens[i]);
-    // }
-}
+// int main(void)
+// {
+//     char *arr[] = {"echo", "\"Hello World\"", "|", "./output.txt", "2>", "cat", ">>", "yo"};
+//     struct token **tokens = malloc(8 * sizeof(struct token));
+//     tokenize(arr, 8, tokens);
+//     // for (int i = 0; i < 8; i++)
+//     // {
+//     //     printf("%d %s %p", tokens[i]->type, tokens[i]->data.value, &tokens[i]);
+//     // }
+// }
