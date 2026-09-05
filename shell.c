@@ -10,6 +10,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <fcntl.h>
+#include "parser.h"
 
 /* Misc manifest constants */
 #define MAXLINE 1024   /* max line size */
@@ -54,7 +56,8 @@ struct job_t jobs[MAXJOBS]; /* The job list */
 
 /* Here are the functions that you will implement */
 void eval(char *cmdline);
-int builtin_cmd(char **argv);
+void exec_cmd(Expr *cmd, int bg, char *cmd_line);
+int builtin_cmd(char *cmd_word);
 void do_bgfg(char **argv);
 void waitfg(pid_t pid);
 
@@ -166,16 +169,15 @@ int main(int argc, char **argv)
  * background children don't receive SIGINT (SIGTSTP) from the kernel
  * when we type ctrl-c (ctrl-z) at the keyboard.
  */
+
+// want to get
 void eval(char *cmdline)
 {
-    pid_t pid;
-    sigset_t mask, prev_mask;
-    int bg;
-
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGCHLD);
-
+    int bg, output_fd, input_fd;
     char *argv[MAXARGS];
+
+    input_fd = STDIN_FILENO;
+    output_fd = STDOUT_FILENO;
 
     bg = parseline(cmdline, argv);
 
@@ -184,7 +186,31 @@ void eval(char *cmdline)
         return;
     }
 
-    if (!builtin_cmd(argv))
+    Expr *ast = get_pipeline(argv, sizeof(argv) / sizeof(argv[0]));
+    exec_cmd(ast, bg, cmdline);
+
+    // if (ast->tag == PIPE)
+    // {
+    //     output_fd = open("temp.txt", O_CREAT);
+    //     dup2(output_fd, 1);
+    //     exec_cmd(ast->data.Pipeline.left, input_fd);
+
+    //     exec_cmd(ast->data.Pipeline.right);
+    // }
+}
+
+void exec_cmd(Expr *cmd, int bg, char *cmdline)
+{
+
+    // add input as parameter for pipeline?
+    pid_t pid;
+    sigset_t mask, prev_mask;
+
+    char **args = cmd->data.Cmd.args;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGCHLD);
+
+    if (!builtin_cmd(args[0]))
     {
         sigprocmask(SIG_BLOCK, &mask, &prev_mask);
         if ((pid = fork()) == 0)
@@ -195,9 +221,9 @@ void eval(char *cmdline)
                 unix_error("error setting process group");
                 exit(0);
             }
-            if (execve(argv[0], argv, environ) < 0)
+            if (execve(args[0], args, environ) < 0)
             {
-                printf("%s: command not found\n", argv[0]);
+                printf("%s: command not found\n", args[0]);
                 exit(0);
             };
         }
@@ -291,20 +317,20 @@ int parseline(const char *cmdline, char **argv)
  * builtin_cmd - If the user has typed a built-in command then execute
  *    it immediately.
  */
-int builtin_cmd(char **argv)
+int builtin_cmd(char *cmd_word)
 {
-    if (!strcmp(argv[0], "quit"))
+    if (!strcmp(cmd_word, "quit"))
     {
         exit(0);
     }
-    else if (!strcmp(argv[0], "jobs"))
+    else if (!strcmp(cmd_word, "jobs"))
     {
         listjobs(jobs);
         return 1;
     }
-    else if (!strcmp(argv[0], "bg") || !strcmp(argv[0], "fg"))
+    else if (!strcmp(cmd_word, "bg") || !strcmp(cmd_word, "fg"))
     {
-        do_bgfg(argv);
+        do_bgfg(cmd_word);
         return 1;
     }
     return 0; /* not a builtin command */

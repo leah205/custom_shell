@@ -11,10 +11,10 @@ parser: parser.o lexer.o
 # shell.o: shell.c
 # 	$(CC) $(CFLAGS) -c shell.c
 
-lexer.o: lexer.c parser.h
+lexer.o: lexer.c lexer.h
 	$(CC) $(CFLAGS) -c lexer.c
 
-parser.o: parser.c parser.h
+parser.o: parser.c parser.h lexer.h
 	$(CC) $(CFLAGS) -c parser.c
 
 clean:

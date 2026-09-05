@@ -1,28 +1,44 @@
-#define _POSIX_C_SOURCE 200809L
 
-enum redirect_type
+#include "lexer.h"
+
+#define MAX_ARGS 10
+#define MAX_REDIRECTS 10
+
+#ifndef PARSER_H
+#define PARSER_H
+
+struct Io_redirect
 {
-    REDIRECT_IN,
-    REDIRECT_OUT,
-    REDIRECT_OUT_APPEND,
-    REDIRECT_ERR
+    enum redirect_type op;
+    char *file;
 };
 
-enum token_type
+typedef struct Expr
 {
-    PIPE,
-    REDIRECT,
-    WORD
-};
-
-struct token
-{
-    enum token_type type;
+    enum
+    {
+        PIPE_CMD,
+        CMD,
+    } tag;
     union
     {
-        char *value;
-        char token;
-    } data;
-};
+        struct Pipeline
+        {
+            struct Expr *left;
+            struct Expr *right;
+        } Pipeline;
 
-int tokenize(char *arr[], int n, struct token **tokens);
+        struct Cmd
+        {
+            char *args[MAX_ARGS];
+            int argc;
+            struct Io_redirect redirects[MAX_REDIRECTS];
+            int redirectc;
+        } Cmd;
+
+    } data;
+} Expr;
+
+Expr *get_pipeline();
+
+#endif
