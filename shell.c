@@ -25,6 +25,8 @@
 #define BG 2    /* running in background */
 #define ST 3    /* stopped */
 
+#define DEF_MODE S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
+
 /*
  * Jobs states: FG (foreground), BG (background), ST (stopped)
  * Job state transitions and enabling actions:
@@ -57,7 +59,7 @@ struct job_t jobs[MAXJOBS]; /* The job list */
 /* Here are the functions that you will implement */
 void eval(char *cmdline);
 void exec_cmd(Expr *cmd, int bg, char *cmd_line);
-int builtin_cmd(char *cmd_word);
+int builtin_cmd(char **argv);
 void do_bgfg(char **argv);
 void waitfg(pid_t pid);
 
@@ -66,7 +68,7 @@ void sigtstp_handler(int sig);
 void sigint_handler(int sig);
 
 /* Here are helper routines that we've provided for you */
-int parseline(const char *cmdline, char **argv);
+int parseline(const char *cmdline, char **argv, int *argc);
 void sigquit_handler(int sig);
 
 void clearjob(struct job_t *job);
@@ -174,19 +176,27 @@ int main(int argc, char **argv)
 void eval(char *cmdline)
 {
     int bg, output_fd, input_fd;
+    int argc;
     char *argv[MAXARGS];
+    int fd;
 
     input_fd = STDIN_FILENO;
     output_fd = STDOUT_FILENO;
 
-    bg = parseline(cmdline, argv);
+    bg = parseline(cmdline, argv, &argc);
 
     if (!argv[0])
     {
         return;
     }
 
-    Expr *ast = get_pipeline(argv, sizeof(argv) / sizeof(argv[0]));
+    struct token **tokens = malloc(argc * sizeof(struct token *));
+    if (tokenize(argv, argc, tokens) < 0)
+    {
+        exit(0);
+    }
+    Expr *ast = get_pipeline(tokens, argc);
+
     exec_cmd(ast, bg, cmdline);
 
     // if (ast->tag == PIPE)
@@ -205,22 +215,53 @@ void exec_cmd(Expr *cmd, int bg, char *cmdline)
     // add input as parameter for pipeline?
     pid_t pid;
     sigset_t mask, prev_mask;
+    int fd;
 
     char **args = cmd->data.Cmd.args;
+    struct Io_redirect *redirects = cmd->data.Cmd.redirects;
+    int redirectc = cmd->data.Cmd.redirectc;
+
     sigemptyset(&mask);
     sigaddset(&mask, SIGCHLD);
 
-    if (!builtin_cmd(args[0]))
+    if (!builtin_cmd(args))
     {
         sigprocmask(SIG_BLOCK, &mask, &prev_mask);
         if ((pid = fork()) == 0)
         {
+
             sigprocmask(SIG_SETMASK, &prev_mask, NULL);
             if (setpgid(0, 0) == -1)
             {
                 unix_error("error setting process group");
                 exit(0);
             }
+
+            for (int i = 0; i < redirectc; i++)
+            {
+
+                switch (redirects[i].op)
+                {
+                case REDIRECT_IN:
+                    fd = open(redirects[i].file, O_RDWR, DEF_MODE);
+                    lseek(fd, 0, SEEK_SET);
+                    dup2(fd, STDIN_FILENO);
+                    break;
+                case REDIRECT_OUT:
+                    fd = open(redirects[i].file, O_RDWR | O_CREAT | O_TRUNC, DEF_MODE);
+                    dup2(fd, STDOUT_FILENO);
+
+                    break;
+                case REDIRECT_ERR:
+                    fd = open(redirects[i].file, O_RDWR | O_CREAT, DEF_MODE);
+                    dup2(fd, STDERR_FILENO);
+                    break;
+                case REDIRECT_OUT_APPEND:
+                    fd = open(redirects[i].file, O_RDWR | O_APPEND | O_CREAT, DEF_MODE);
+                    dup2(fd, STDOUT_FILENO);
+                }
+            }
+
             if (execve(args[0], args, environ) < 0)
             {
                 printf("%s: command not found\n", args[0]);
@@ -257,12 +298,12 @@ void exec_cmd(Expr *cmd, int bg, char *cmdline)
  * argument.  Return true if the user has requested a BG job, false if
  * the user has requested a FG job.
  */
-int parseline(const char *cmdline, char **argv)
+int parseline(const char *cmdline, char **argv, int *argc)
 {
     static char array[MAXLINE]; /* holds local copy of command line */
     char *buf = array;          /* ptr that traverses command line */
     char *delim;                /* points to first space delimiter */
-    int argc;                   /* number of args */
+                                /* number of args */
     int bg;                     /* background job? */
 
     strcpy(buf, cmdline);
@@ -271,7 +312,7 @@ int parseline(const char *cmdline, char **argv)
         buf++;
 
     /* Build the argv list */
-    argc = 0;
+    *argc = 0;
     if (*buf == '\'')
     {
         buf++;
@@ -284,7 +325,7 @@ int parseline(const char *cmdline, char **argv)
 
     while (delim)
     {
-        argv[argc++] = buf;
+        argv[(*argc)++] = buf;
         *delim = '\0';
         buf = delim + 1;
         while (*buf && (*buf == ' ')) /* ignore spaces */
@@ -300,15 +341,16 @@ int parseline(const char *cmdline, char **argv)
             delim = strchr(buf, ' ');
         }
     }
-    argv[argc] = NULL;
+    argv[*argc] = NULL;
 
     if (argc == 0) /* ignore blank line */
         return 1;
 
     /* should the job run in the background? */
-    if ((bg = (*argv[argc - 1] == '&')) != 0)
+    if ((bg = (*argv[*argc - 1] == '&')) != 0)
     {
-        argv[--argc] = NULL;
+        --(*argc);
+        argv[*argc] = NULL;
     }
     return bg;
 }
@@ -317,20 +359,20 @@ int parseline(const char *cmdline, char **argv)
  * builtin_cmd - If the user has typed a built-in command then execute
  *    it immediately.
  */
-int builtin_cmd(char *cmd_word)
+int builtin_cmd(char **argv)
 {
-    if (!strcmp(cmd_word, "quit"))
+    if (!strcmp(argv[0], "quit"))
     {
         exit(0);
     }
-    else if (!strcmp(cmd_word, "jobs"))
+    else if (!strcmp(argv[0], "jobs"))
     {
         listjobs(jobs);
         return 1;
     }
-    else if (!strcmp(cmd_word, "bg") || !strcmp(cmd_word, "fg"))
+    else if (!strcmp(argv[0], "bg") || !strcmp(argv[0], "fg"))
     {
-        do_bgfg(cmd_word);
+        do_bgfg(argv);
         return 1;
     }
     return 0; /* not a builtin command */

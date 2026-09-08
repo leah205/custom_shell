@@ -28,6 +28,6 @@ struct token
     } data;
 };
 
-int tokenize(char *arr[], int n, struct token **tokens);
+int tokenize(char *arr[], int tokens_num, struct token **tokens);
 
 #endif

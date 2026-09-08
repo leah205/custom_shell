@@ -39,6 +39,7 @@ typedef struct Expr
     } data;
 } Expr;
 
-Expr *get_pipeline();
+Expr *get_pipeline(struct token **tokens, int tokens_num);
+void print_ast(Expr *ast, int level);
 
 #endif

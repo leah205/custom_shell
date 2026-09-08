@@ -21,7 +21,6 @@ int i = 0;
 
 static void get_redirects(Expr *cmd, struct token **tokens, int tokens_num);
 static void get_args(Expr *cmd, struct token **tokens, int tokens_num);
-static void print_ast(Expr *ast, int level);
 static Expr *cmd(struct token **tokens, int token_num);
 
 static void get_args(Expr *cmd, struct token **tokens, int tokens_num)
@@ -135,17 +134,16 @@ void print_ast(Expr *ast, int level)
     }
 }
 
-int main(void)
-{
-    char *tokens_arr[] = {"echo", "\"Hello World\"", "|", "./output.txt", "2>", "cat", ">>", "yo", "|", "print"};
-    int tokens_num = sizeof(tokens_arr) / sizeof(tokens_arr[0]);
-    struct token **tokens = malloc(tokens_num * sizeof(struct token *));
-    if (tokenize(tokens_arr, tokens_num, tokens) < 0)
-    {
-        exit(0);
-    }
-
-    Expr *ast = get_pipeline(tokens, tokens_num);
-    print_ast(ast, 0);
-    return 0;
-}
+// int main(void)
+// {
+//     char *tokens_arr[] = {"echo", "\"Hello World\"", "|", "./output.txt", "2>", "cat", ">>", "yo", "|", "print", NULL};
+//     int tokens_num = sizeof(tokens_arr) / sizeof(tokens_arr[0]);
+//     struct token **tokens = malloc(tokens_num * sizeof(struct token *));
+//     if (tokenize(tokens_arr, tokens) < 0)
+//     {
+//         exit(0);
+//     }
+//     Expr *ast = get_pipeline(tokens, tokens_num);
+//     print_ast(ast, 0);
+//     return 0;
+// }

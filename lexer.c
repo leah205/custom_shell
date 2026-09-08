@@ -11,10 +11,10 @@
 #include <errno.h>
 #include "parser.h"
 
-int tokenize(char *arr[], int n, struct token **tokens)
+int tokenize(char *arr[], int tokens_num, struct token **tokens)
 {
     int i;
-    for (i = 0; i < n; i++)
+    for (i = 0; i < tokens_num; i++)
     {
 
         tokens[i] = malloc(sizeof(struct token));
