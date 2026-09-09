@@ -58,7 +58,7 @@ struct job_t jobs[MAXJOBS]; /* The job list */
 
 /* Here are the functions that you will implement */
 void eval(char *cmdline);
-void exec_cmd(Expr *cmd, int bg, char *cmd_line);
+void exec_cmd(Expr *cmd, int bg, char *cmd_line, int input_fd, int output_fd);
 int builtin_cmd(char **argv);
 void do_bgfg(char **argv);
 void waitfg(pid_t pid);
@@ -197,21 +197,27 @@ void eval(char *cmdline)
     }
     Expr *ast = get_pipeline(tokens, argc);
 
-    exec_cmd(ast, bg, cmdline);
-
-    // if (ast->tag == PIPE)
-    // {
-    //     output_fd = open("temp.txt", O_CREAT);
-    //     dup2(output_fd, 1);
-    //     exec_cmd(ast->data.Pipeline.left, input_fd);
-
-    //     exec_cmd(ast->data.Pipeline.right);
-    // }
+    print_ast(ast, 0);
+    if (ast->tag == PIPE)
+    {
+        int pipefd[2];
+        if (pipe(pipefd) < 0)
+        {
+            unix_error("pipe error");
+        }
+        exec_cmd(ast->data.Pipeline.left, bg, cmdline, STDIN_FILENO, pipefd[1]);
+        exec_cmd(ast->data.Pipeline.right, bg, cmdline, pipefd[0], STDOUT_FILENO);
+        close(pipefd[0]);
+        close(pipefd[1]);
+    }
+    else
+    {
+        exec_cmd(ast, bg, cmdline, STDIN_FILENO, STDOUT_FILENO);
+    }
 }
 
-void exec_cmd(Expr *cmd, int bg, char *cmdline)
+void exec_cmd(Expr *cmd, int bg, char *cmdline, int input_fd, int output_fd)
 {
-
     // add input as parameter for pipeline?
     pid_t pid;
     sigset_t mask, prev_mask;
@@ -229,7 +235,8 @@ void exec_cmd(Expr *cmd, int bg, char *cmdline)
         sigprocmask(SIG_BLOCK, &mask, &prev_mask);
         if ((pid = fork()) == 0)
         {
-
+            dup2(output_fd, STDOUT_FILENO);
+            dup2(input_fd, STDIN_FILENO);
             sigprocmask(SIG_SETMASK, &prev_mask, NULL);
             if (setpgid(0, 0) == -1)
             {
@@ -264,6 +271,7 @@ void exec_cmd(Expr *cmd, int bg, char *cmdline)
 
             if (execve(args[0], args, environ) < 0)
             {
+
                 printf("%s: command not found\n", args[0]);
                 exit(0);
             };
