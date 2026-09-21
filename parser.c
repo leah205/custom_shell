@@ -63,7 +63,7 @@ Cmd *cmd(struct token **tokens, int token_num)
     return cmd;
 }
 
-void get_pipeline(struct token **tokens, int tokens_num, Cmd *tasks[])
+int get_pipeline(struct token **tokens, int tokens_num, Cmd *tasks[])
 {
     int j = 0;
 
@@ -73,6 +73,7 @@ void get_pipeline(struct token **tokens, int tokens_num, Cmd *tasks[])
         tasks[j++] = cmd(tokens, tokens_num);
     };
     i = 0;
+    return j;
 }
 
 // void print_ast(Expr *ast, int level)
@@ -129,23 +130,23 @@ void get_pipeline(struct token **tokens, int tokens_num, Cmd *tasks[])
 //     }
 // }
 
-int main(void)
-{
-    Cmd *tasks[MAX_TASKS];
+// int main(void)
+// {
+//     Cmd *tasks[MAX_TASKS];
 
-    char *tokens_arr[] = {"echo", "\"Hello World\"", "|", "./output.txt", "2>", "cat", ">>", "yo", "|", "print"};
-    int tokens_num = sizeof(tokens_arr) / sizeof(tokens_arr[0]);
-    struct token **tokens = malloc(tokens_num * sizeof(struct token *));
-    if (tokenize(tokens_arr, tokens_num, tokens) < 0)
-    {
-        exit(0);
-    }
+//     char *tokens_arr[] = {"echo", "\"Hello World\"", "|", "./output.txt", "2>", "cat", ">>", "yo", "|", "print"};
+//     int tokens_num = sizeof(tokens_arr) / sizeof(tokens_arr[0]);
+//     struct token **tokens = malloc(tokens_num * sizeof(struct token *));
+//     if (tokenize(tokens_arr, tokens_num, tokens) < 0)
+//     {
+//         exit(0);
+//     }
 
-    get_pipeline(tokens, tokens_num, tasks);
+//     get_pipeline(tokens, tokens_num, tasks);
 
-    for (int i = 0; i < 3; i++)
-    {
-        printf("command: %s\n", tasks[i]->args[0]);
-    }
-    return 0;
-}
+//     for (int i = 0; i < 3; i++)
+//     {
+//         printf("command: %s\n", tasks[i]->args[0]);
+//     }
+//     return 0;
+// }

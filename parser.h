@@ -48,7 +48,7 @@ typedef struct Cmd
 //     } data;
 // } Expr;
 
-void get_pipeline(struct token **tokens, int tokens_num, Cmd *tasks[]);
+int get_pipeline(struct token **tokens, int tokens_num, Cmd *tasks[]);
 void print_ast(Cmd *ast, int level);
 
 #endif
