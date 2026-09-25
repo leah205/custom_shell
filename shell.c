@@ -222,7 +222,7 @@ void exec_job(struct job_t *job)
 
     job->running = 1;
 
-    while (pid == -1 || fgpgid(jobs) == job->pgid)
+    while (pid == -1 || (fgpgid(jobs) && fgpgid(jobs) == job->pgid))
     {
         is_first_task = (job->curr_task == 0);
         // rediredct output to next task in pipeline
@@ -235,6 +235,11 @@ void exec_job(struct job_t *job)
             }
             job->output_fd = pipefd[1];
             redirect_to_next = 1;
+        }
+
+        if (builtin_cmd(job->tasks[job->curr_task]->args))
+        {
+            return;
         }
 
         sigemptyset(&mask);
@@ -304,11 +309,6 @@ void exec_cmd(Cmd *cmd)
     char **args = cmd->args;
     struct Io_redirect *redirects = cmd->redirects;
     int redirectc = cmd->redirectc;
-
-    if (builtin_cmd(args))
-    {
-        return;
-    }
 
     for (int i = 0; i < redirectc; i++)
     {
@@ -511,11 +511,12 @@ void waitfg(pid_t pgid)
     // sigprocmask(SIG_UNBLOCK, &mask, NULL);
     printf("%d", pgid);
     fflush(stdout);
-    struct job_t *job = getjobpgid(pgid);
+    struct job_t *job = getjobpgid(jobs, pgid);
     while (pgid == fgpgid(jobs) || pgid == 0)
     {
         if (!job->running)
         {
+            break;
         }
 
         sleep(0.01);

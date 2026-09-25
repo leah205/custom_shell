@@ -132,7 +132,7 @@ int add_job_to_queue(struct job_t *jobs, pid_t pgid)
 struct job_t *pop_from_queue()
 {
     pid_t pgid;
-    if (!jobs_in_queue)
+    if (jobs_in_queue <= 0)
     {
         return NULL;
     }
