@@ -178,6 +178,11 @@ void eval(char *cmdline)
         exit(0);
     }
 
+    if (builtin_cmd(argv))
+    {
+        return;
+    }
+
     if (!bg)
     {
         state = FG;
@@ -237,10 +242,10 @@ void exec_job(struct job_t *job)
             redirect_to_next = 1;
         }
 
-        if (builtin_cmd(job->tasks[job->curr_task]->args))
-        {
-            return;
-        }
+        // if (builtin_cmd(job->tasks[job->curr_task]->args))
+        // {
+        //     return;
+        // }
 
         sigemptyset(&mask);
         sigaddset(&mask, SIGCHLD);
@@ -280,7 +285,7 @@ void exec_job(struct job_t *job)
             {
                 sigprocmask(SIG_SETMASK, &prev_mask, NULL);
                 waitfg(pid);
-                // sigsuspend(&prev_mask);
+                // sigsuspend(&prev_mask);sigchl
             }
             else
             {
@@ -561,8 +566,9 @@ void sigchld_handler(int sig)
         {
             // process naturally terminated
             job->curr_task++;
+            // printf("curr task num: %d, num tasks: %d", job->curr_task, job->num_tasks);
 
-            if (job->curr_task == job->num_tasks)
+            if (job->curr_task >= job->num_tasks)
             {
                 deletejob(jobs, job->pgid);
                 return;
